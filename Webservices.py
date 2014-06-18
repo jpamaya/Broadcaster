@@ -12,7 +12,8 @@ import commands
 import config
 from datetime import datetime
 from MBeanHelper import MBeanHelper
-from _mysql_exceptions import OperationalError 
+from _mysql_exceptions import OperationalError
+import netifaces
 #import Analizador
 idU=0
 
@@ -28,8 +29,8 @@ urls += ('/notificacion/leidos/(.*)', 'notificacionLeidos','/notificacion', 'set
 urls += ('/p1/(.*)','prueba1','/consultar/(.*)','consultar')
 
 database='stcav1'
-#ipdb='localhost'
-ipdb='192.168.119.2'
+ipdb='localhost'
+#ipdb='192.168.119.2'
 logindb='root'
 pwddb='st'
 resName='ga1'
@@ -38,25 +39,26 @@ mbeanName='Webservices'
 mbeanHelper=None
 
 def getIpdb():
-    ipdb=mbeanHelper.getAttribute(mbeanName, resName,configName,'ipdb')
-    return ipdb 
+    ipdb=mbeanHelper.getAttribute(mbeanName,configName,'ipdb')
+    return ipdb
 
 def getLogindb():
-    logindb=mbeanHelper.getAttribute(mbeanName, resName,configName,'logindb')
-    return logindb 
+    logindb=mbeanHelper.getAttribute(mbeanName, configName,'logindb')
+    return logindb
 
 def getPwddb():
-    pwddb=mbeanHelper.getAttribute(mbeanName, resName,configName,'pwddb')
-    return pwddb 
+    pwddb=mbeanHelper.getAttribute(mbeanName, configName,'pwddb')
+    return pwddb
 
 def getDbname():
-    dbname=mbeanHelper.getAttribute(mbeanName, resName,configName,'dbname')
-    return dbname 
+    dbname=mbeanHelper.getAttribute(mbeanName, configName,'dbname')
+    return dbname
 
 class MyApplication(web.application):
     def run(self, port=8080, *middleware):
-        config.dirip=commands.getoutput("ifconfig").split("\n")[1].split()[1][5:]
-        #config.dirip='172.16.233.24'
+        #config.dirip=commands.getoutput("ifconfig").split("\n")[1].split()[1][5:]
+        #config.dirip='192.168.0.26'
+        config.dirip = netifaces.ifaddresses('en0')[netifaces.AF_INET][0].get('addr')
         func = web.application(urls, globals()).wsgifunc()
         a=None
         try:
@@ -80,7 +82,7 @@ class getNotificaciones:#YA
 
         idusuario = web.input('idusuario').idusuario
         idcomunidad = web.input('idcomunidad').idcomunidad
-        desdeid = web.input('desdeid').desdeid        
+        desdeid = web.input('desdeid').desdeid
         nummax=10
         db=None
         try:
@@ -88,7 +90,7 @@ class getNotificaciones:#YA
         except OperationalError:
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
-            
+
         if db is not None:
             cursor=db.cursor()
             #sql='SELECT * FROM (SELECT Noticia.idNoticia, Noticia.idTipo, Noticia.idNotificacion FROM Noticia LEFT JOIN Notificado ON Notificado.idNoticia=Noticia.idNoticia AND Notificado.idUsuario='+idusuario+' WHERE Noticia.idNoticia>'+str(desdeid)+' AND Noticia.idComunidad='+idcomunidad+' AND Notificado.idUsuario is null ORDER BY Noticia.idNoticia DESC LIMIT '+nummax+') AS tbl ORDER BY tbl.idNoticia ASC;'
@@ -121,7 +123,7 @@ class getNotificaciones:#YA
                             if str(j[1]).strip() is None or str(j[1]).strip() is '':
                                 cadena+='\"foto1\" : \"\", '
                             else:
-                                cadena+='\"foto1\" : \"'+'http://'+config.dirip+'/Images/'+str(j[1]).strip()+'\", '    
+                                cadena+='\"foto1\" : \"'+'http://'+config.dirip+'/Images/'+str(j[1]).strip()+'\", '
                             cadena+='\"nombre2\" : \"'+str(j[2])+'\", '
                             if str(j[3]).strip() is None or str(j[3]).strip() is '':
                                 cadena+='\"foto2\" : \"\", '
@@ -162,7 +164,7 @@ class notificacionLeidos:#YA
         except OperationalError:
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
-            
+
         if db is not None:
             cursor=db.cursor()
             sql='SELECT Noticia.idNoticia,Notificado.Noticia_idNoticia FROM Noticia LEFT JOIN Notificado ON Notificado.Noticia_idNoticia=Noticia.idNoticia AND Notificado.Usuario_idUsuario='+idusuario+' WHERE Noticia.Comunidad_idComunidad='+idcomunidad+' AND Noticia.idNoticia>='+desdeid+' && Noticia.idNoticia<='+hastaid+' ORDER BY Noticia.idNoticia DESC;'
@@ -188,7 +190,7 @@ class notificacionLeidos:#YA
                 return ''
             else:
                 return '{\"leidos\" : ['+cadena+']}'
-        
+
 class setNotificacionMensaje:
     #Actualiza la lectura de una notificacion de un mensaje o comentario
     def POST(self):
@@ -206,7 +208,7 @@ class setNotificacionMensaje:
         except OperationalError:
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
-            
+
         if db is not None:
             cursor=db.cursor()
             sql='SELECT Noticia.idNoticia FROM Noticia WHERE Noticia.Id_notificacion='+str(idnoticia)+' AND Noticia.Tipo_Noticia_idTipo_Noticia=2;'
@@ -258,7 +260,7 @@ class setNotificacion:
         except OperationalError:
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
-            
+
         if db is not None:
             cursor=db.cursor()
             sql='INSERT INTO Notificado (Noticia_idNoticia,Usuario_idUsuario) VALUES (\''+str(idnoticia)+'\',\''+str(idusuario)+'\');'
@@ -274,7 +276,7 @@ class setNotificacion:
             return 'Not Working'
         else:
             return '{"respuesta" : "OK"}'
-    
+
 class actualizarperfil:#YA
     #Actualiza el perfil del usuario
     def POST(self):
@@ -304,8 +306,8 @@ class actualizarperfil:#YA
             '''
             sql='SELECT Profesion.Nombre FROM Usuario,Profesion,Usuario_has_Profesion WHERE Usuario_idUsuario='+str(idusuario)+' AND Usuario.idUsuario=Usuario_has_Profesion.Usuario_idUsuario AND Usuario_has_Profesion.Profesion_idProfesion=Profesion.idProfesion;'
             cursor.execute(sql)
-            hay=cursor.rowcount        
-            
+            hay=cursor.rowcount
+
             sql='UPDATE Profesion SET Nombres=\''+nombre+'\', Profesion=\''+profesion+'\',Email=\''+email+'\' WHERE idUsuario='+str(idusuario)+';'
             cursor.execute(sql)
             db.commit()
@@ -325,7 +327,7 @@ class perfil:#YA
         #http://192.168.120.80:8888/persona/?idusuario=1
         db=None
         start = datetime.now()
-        conteo=mbeanHelper.getAttribute(mbeanName, resName,resName,'perfil')
+        conteo=mbeanHelper.getAttribute(mbeanName,resName,'perfil')
         mbeanHelper.changeAttribute(mbeanName,resName,'perfil',conteo.intValue()+1)
         #mbeanHelper.sendNotification('gestv.error.testerror', 'prueba de notificacion de error')
         idusuario = web.input('idusuario').idusuario
@@ -370,7 +372,7 @@ class busquedapersonas:#YA
     def GET(self, args):
         #http://192.168.120.80:8888/personas/?idcomunidad=1&key=este
         start = datetime.now()
-        conteo=mbeanHelper.getAttribute(mbeanName, resName,resName,'busquedaPersonas')
+        conteo=mbeanHelper.getAttribute(mbeanName,resName,'busquedaPersonas')
         mbeanHelper.changeAttribute(mbeanName,resName,'busquedaPersonas',conteo.intValue()+1)
 
         idcomunidad = web.input('idcomunidad').idcomunidad
@@ -389,7 +391,7 @@ class busquedapersonas:#YA
             #numrows=cursor.rowcount
             #print str(numrows)
             cadena=''
-            for i in resultado: 
+            for i in resultado:
                 cadena+='{'
                 cadena+='\"id\" : \"'+str(i[0])+'\", '
                 cadena+='\"nombre\" : \"'+i[1]+'\", '
@@ -513,7 +515,7 @@ class chat:#YA
                     cadena+='\"foto\" : \"\"'
                 else:
                     cadena+='\"foto\" : \"'+'http://'+config.dirip+'/Images/'+str(i[4]).strip()+'\"'
-                
+
                 cadena+='},'
             cadena=cadena.rstrip(',')
             db.close()
@@ -611,7 +613,7 @@ class tabloncomentario:#YA
         else:
             if len(cadena) == 0 :
                 return ''
-            else:        
+            else:
                 return '{\"comentariosTablon\" : ['+cadena+']}'
 
 class tabloncomentarios:#YA
@@ -847,7 +849,7 @@ class epgtop:#YA
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             sql='SELECT SUM(Votacion.Respuesta)/COUNT(Votacion.Valoracion_idValoracion),Programa.idPrograma, Programa.Nombre, Programa.Descripcion,DATE_FORMAT(Programa.Hora,\'%H:%i:%s\') as Hora, Programa.Dia, Preferencias_Programas.Favorito, Preferencias_Programas.Recordatorio FROM Evento,Valoracion,Votacion,Programa LEFT JOIN Preferencias_Programas ON Preferencias_Programas.Programa_idPrograma=Programa.idPrograma AND Preferencias_Programas.Usuario_idUsuario='+id+' WHERE Valoracion.Evento_idEvento=Evento.idEvento AND Evento.Programa_idPrograma=Programa.idPrograma AND Votacion.Valoracion_idValoracion=Valoracion.idValoracion GROUP BY Programa.idPrograma ORDER BY SUM(Votacion.Respuesta)/COUNT(Votacion.Valoracion_idValoracion) DESC;'
             cursor.execute(sql)
@@ -881,7 +883,7 @@ class epgtop:#YA
             return 'Not Working'
         else:
             return '{\"programas_top\" : ['+cadena+']}'
-    
+
 class epgfavoritos:#YA
     #Consulta los programas favoritos de un usuario
     def GET(self,id):
@@ -896,7 +898,7 @@ class epgfavoritos:#YA
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             sql='SELECT Programa.idPrograma, Programa.Nombre, Programa.Descripcion, DATE_FORMAT(Programa.Hora,\'%H:%i:%s\') as Hora, Programa.Dia, Preferencias_Programas.Recordatorio FROM Programa,Preferencias_Programas WHERE Preferencias_Programas.Programa_idPrograma=Programa.idPrograma AND Preferencias_Programas.Usuario_idUsuario='+id+' AND Preferencias_Programas.Favorito=1 ORDER BY Programa.Dia, Programa.Hora;'
             cursor.execute(sql)
@@ -941,7 +943,7 @@ class epgbusqueda:#YA
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             sql='SELECT Programa.idPrograma, Programa.Nombre, Programa.Descripcion, DATE_FORMAT(Programa.Hora,\'%H:%i:%s\') as Hora, Programa.Dia, Preferencias_Programas.Favorito, Preferencias_Programas.Recordatorio FROM Programa LEFT JOIN Preferencias_Programas ON Preferencias_Programas.Programa_idPrograma=Programa.idPrograma AND Preferencias_Programas.Usuario_idUsuario='+id+' WHERE Programa.Nombre LIKE \'%'+key+'%\' OR Programa.Descripcion LIKE \'%'+key+'%\' ORDER BY Programa.Dia, Programa.Hora;'
             cursor.execute(sql)
@@ -958,7 +960,7 @@ class epgbusqueda:#YA
                 if i[5] is None:
                     cadena+='\"Favorito\" : \"\", '
                 else:
-                    cadena+='\"Favorito\" : \"'+str(i[5])+'\", '   
+                    cadena+='\"Favorito\" : \"'+str(i[5])+'\", '
                 if i[6] is None:
                     cadena+='\"Recordatorio\" : \"\"'
                 else:
@@ -972,7 +974,7 @@ class epgbusqueda:#YA
             return 'Not Working'
         else:
             return '{\"busqueda\" : ['+cadena+']}'
-    
+
 class infoasociada:#YA
     #Consulta la informacion asociada a un programa
     def GET(self, id):
@@ -987,7 +989,7 @@ class infoasociada:#YA
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             sql='SELECT Texto,Duracion FROM Info_Asociada WHERE Info_Asociada.idInfo_Asociada='+id+';'
             cursor.execute(sql)
@@ -1008,7 +1010,7 @@ class infoasociada:#YA
                 return '{\"id\" : \"'+id+'\" , \"texto\" : \"'+info[0]+'\" , \"duracion\" : \"'+str(info[1])+'\"}\n'
             else :
                 return ''
-            
+
 
 class voto:#YA
     #Realiza la votacion de un usuario a un programa
@@ -1026,7 +1028,7 @@ class voto:#YA
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             sql='INSERT INTO Votacion (Valoracion_idValoracion,Respuesta) VALUES ('+idenc+',\''+i+'\');'
             cursor.execute(sql)
@@ -1061,7 +1063,7 @@ class valida:#YA
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             sql='SELECT Usuario.idUsuario,Usuario.Nombres,Usuario.Email,Profesion.Nombre,Usuario.Foto FROM Usuario,Profesion,Usuario_has_Profesion WHERE Login=\''+login+'\' AND Pwd=\''+passwd+'\' AND Usuario.idUsuario=Usuario_has_Profesion.Usuario_idUsuario AND Usuario_has_Profesion.Profesion_idProfesion=Profesion.idProfesion;'
             cursor.execute(sql)
@@ -1093,8 +1095,8 @@ class valida:#YA
             return 'Not Working'
         else:
             return retorno
-        
-        
+
+
 
 class miembroscomunidad:#YA
     #Consulta la lista de miembros de una comunidad
@@ -1111,7 +1113,7 @@ class miembroscomunidad:#YA
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             sql='SELECT Usuario.idUsuario,Usuario.Nombres FROM Comunidad,Usuario,Usuario_has_Comunidad WHERE Comunidad.idComunidad='+idcomunidad+' AND Usuario_has_Comunidad.Comunidad_idComunidad=Comunidad.idComunidad AND Usuario_has_Comunidad.Usuario_idUsuario=Usuario.idUsuario ORDER BY Usuario_has_Comunidad.Rol DESC;'
             cursor.execute(sql)
@@ -1147,7 +1149,7 @@ class comunidad:#YA
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             sql='SELECT Comunidad.Nombre,Comunidad.Descripcion,Comunidad.Tematica,Usuario.Nombres FROM Comunidad,Usuario,Usuario_has_Comunidad WHERE Comunidad.idComunidad='+str(idcomunidad)+' AND Usuario_has_Comunidad.Rol=\'Coordinador\' AND Usuario_has_Comunidad.Comunidad_idComunidad=Comunidad.idComunidad AND Usuario_has_Comunidad.Usuario_idUsuario=Usuario.idUsuario;'
             cursor.execute(sql)
@@ -1169,7 +1171,7 @@ class comunidad:#YA
             return 'Not Working'
         else:
             return '{\"comunidad\" : ['+cadena+']}'
-    
+
 class comunidades:#YA
     #Consulta las comunidades a las que pertenece un usuario
     def GET(self,args):
@@ -1222,7 +1224,7 @@ class busquedacomunidades:#YA
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             sql='SELECT Comunidad.idComunidad,Comunidad.Nombre,Usuario_has_Comunidad.Usuario_idUsuario FROM Comunidad LEFT JOIN Usuario_has_Comunidad ON Comunidad.idComunidad=Usuario_has_Comunidad.Comunidad_idComunidad AND Usuario_has_Comunidad.Usuario_idUsuario='+str(idusuario)+' WHERE Comunidad.Nombre LIKE \'%'+key+'%\';'
             cursor.execute(sql)
@@ -1266,7 +1268,7 @@ class regcomunidad:#YA
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             sql=''
             if estado in 'alta':
@@ -1288,7 +1290,7 @@ class regcomunidad:#YA
             return '{"respuesta" : "OK"}'
 
 class programacion:#YA
-    #Consulta la programacion de la semana para uno o todos los dias y a�ade los datos de preferencias del usuario    
+    #Consulta la programacion de la semana para uno o todos los dias y a�ade los datos de preferencias del usuario
     def GET(self,args):
         #http://192.168.120.80:8888/programacion/?idusuario=1&dia=1
         #http://192.168.120.80:8888/programacion/?idusuario=todos&dia=1
@@ -1304,7 +1306,7 @@ class programacion:#YA
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             if 'todos' in idusuario:
                 if 'todos' in dia:
@@ -1320,7 +1322,7 @@ class programacion:#YA
             cursor.execute(sql)
             resultado=cursor.fetchall()
             cadena=''
-            
+
             if 'todos' in idusuario:
                 for i in resultado:
                     cadena+='{'
@@ -1375,14 +1377,14 @@ class preferencias:#YA
             rec = web.input('recordado').recordado
         idusu = web.input('idusuario').idusuario
         idprog = web.input('idprograma').idprograma
-        
+
         try:
             db=MySQLdb.connect(host=ipdb,user=logindb,passwd=pwddb,db=database)
         except OperationalError:
             mbeanHelper.sendNotification(mbeans[0],'gestv.error.databaseConnectionRefused', 'empty');
             print "Error: No puedo conectarse a la base de datos."
         if db is not None:
-    
+
             cursor=db.cursor()
             sql='SELECT * FROM Preferencias_Programas WHERE Usuario_idUsuario='+idusu+' AND Programa_idPrograma='+idprog+';'
             cursor.execute(sql)
@@ -1410,7 +1412,7 @@ class preferencias:#YA
             return 'Not Working'
         else:
             return '{"respuesta" : "OK"}'
-        
+
 class prueba1:
     def GET(self,args):
         time = web.input('time').time
@@ -1437,10 +1439,10 @@ if MBeanHelper.instance is None :
 else:
     mbeanHelper = MBeanHelper.instance
 
-mbeans=mbeanHelper.register([resName,configName],mbeanName)    
-app = MyApplication(urls, globals())    
+mbeans=mbeanHelper.register([resName,configName],mbeanName)
+app = MyApplication(urls, globals())
 if __name__ == "__main__":
     fechaactual=time.strftime("%H:%M:%S %Y-%m-%d")
     mbeanHelper.changeAttribute(mbeanName,resName,'uptime', fechaactual)
     app.run(port=8888)
-    mbeanHelper.shutdownJVM()    
+    mbeanHelper.shutdownJVM()

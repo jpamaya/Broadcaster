@@ -10,24 +10,26 @@ mbnames=[]
 type=None
 
 
-class MBeanHelper:
-    
+class MBeanHelper():
+
     instance = None
-    
+
     def __init__(self,domain,port):
         global dominio,puerto
         if MBeanHelper.instance is None:
             dominio=domain
             puerto=port
+            #java.lang.System.setProperty("javafx.macosx.embedded", "true");
+            #java.awt.Toolkit.getDefaultToolkit();
             self.startJVM()
-            
+
     def startJVM(self):
         global mbeanServer,dominio,puerto
         print os.path.abspath('.')
         classpath = os.path.join(os.path.abspath('.'))
         print jpype.getDefaultJVMPath()
-        jpype.startJVM(jpype.getDefaultJVMPath(), "-ea", "-Dvisualvm.display.name="+dominio+":"+str(puerto), "-Dcom.sun.management.jmxremote", "-Dcom.sun.management.jmxremote.port="+str(puerto), "-Dcom.sun.management.jmxremote.authenticate=false", "-Dcom.sun.management.jmxremote.ssl=false", "-Djava.class.path=simple-xml-2.6.9.jar:%s" % classpath)
-        mbeanServer = java.lang.management.ManagementFactory.getPlatformMBeanServer();        
+        jpype.startJVM(jpype.getDefaultJVMPath(), '-Djava.awt.headless=true',"-ea", "-Dvisualvm.display.name="+dominio+":"+str(puerto), "-Dcom.sun.management.jmxremote", "-Dcom.sun.management.jmxremote.port="+str(puerto), "-Dcom.sun.management.jmxremote.authenticate=false", "-Dcom.sun.management.jmxremote.ssl=false", "-Djava.class.path=simple-xml-2.6.9.jar:%s" % classpath)
+        mbeanServer = java.lang.management.ManagementFactory.getPlatformMBeanServer();
 
     def register(self,noms,tipo):
         global dominio,mbnames,type,mbeans
@@ -49,12 +51,12 @@ class MBeanHelper:
         for name in mbnames:
             objectName = javax.management.ObjectName(dominio+":type="+type+",name="+name);
             mbeanServer.unregisterMBean(objectName);
-    
+
     def shutdownJVM(self):
         print 'Desconectando JVM'
         jpype.shutdownJVM()
         print 'Desconectada JVM'
-    
+
     def changeAttribute(self,tipo,name,attribute,value):
         global mbeanServer,dominio,type
         objectName = javax.management.ObjectName(dominio+":type="+type+",name="+name);
@@ -80,14 +82,14 @@ class MBeanHelper:
     def sendNotification(self,mbean,tipo,message):
         global mbeanServer
         mbean.sendNotification(tipo, message);
-        
-'''    
+
+'''
 while True:
     print '\n************************ 1. Iniciar ************************\n'
     print '************************ 2. cambiar valor ************************\n'
     print '************************ 3. Cerrar ************************\n'
     command_line = raw_input()
-    print command_line 
+    print command_line
     if "1" in command_line:
         startJVM()
     if "2" in command_line:
@@ -95,4 +97,4 @@ while True:
     if "3" in command_line:
         shutdownJVM()
         os._exit(1)
-'''    
+'''
